@@ -97,7 +97,7 @@ func CreateRootlessSpec(
 		NoNewPrivileges: true,
 	}
 
-	defaultMounts := []SpecMount{
+	mounts := []SpecMount{
 		SpecMount{
 			Destination: "/proc",
 			TypeVal:     "proc",
@@ -174,6 +174,20 @@ func CreateRootlessSpec(
 		},
 	}
 
+	for _, additionalMountPath := range additionalMountPaths {
+		additional := SpecMount{
+			Destination: additionalMountPath,
+			TypeVal: "bind",
+			Source: additionalMountPath,
+			Options: []string{
+				"nosuid",
+				"noexec",
+				"nodev",
+			},
+		}
+		mounts = append(mounts, additional)
+	}
+
 	linux := SpecLinux{
 		UIDMappings: []SpecMapping{
 			SpecMapping{
@@ -226,7 +240,7 @@ func CreateRootlessSpec(
 			Readonly: true,
 		},
 		Hostname: "fsark",
-		Mounts:   defaultMounts,
+		Mounts:   mounts,
 		Linux:    linux,
 	}
 }
