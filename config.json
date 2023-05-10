@@ -1,0 +1,7 @@
+{
+    "rootfs": "/tmp/mycontainer",
+    "mounts": [
+        "/home/michael"
+    ],
+    "command": "/bin/sh"
+}

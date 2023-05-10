@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	_ "embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,12 +15,16 @@ import (
 	"github.com/otiai10/copy"
 )
 
-type config struct {
-	imageRootFSPath string
-	mountsList []string
+type Config struct {
+	ImageRootFSPath string `json:"rootfs"`
+	MountsList []string `json:"mounts"`
+	Command string `json:"command"`
 }
 
-func (c config) buildContainerInDir(path string) error {
+//go:embed config.json
+var config_bytes []byte
+
+func (c Config) buildContainerInDir(path string) error {
 
 	destRootFSPath := filepath.Join(path, "rootfs")
 
@@ -27,10 +32,10 @@ func (c config) buildContainerInDir(path string) error {
 	gid := os.Getgid()
 
 	spec := CreateRootlessSpec(
-		[]string{"/bin/sh"},
+		[]string{c.Command},
 		"/",
 		destRootFSPath,
-		[]string{},
+		c.MountsList,
 		uid,
 		gid,
 	)
@@ -46,7 +51,7 @@ func (c config) buildContainerInDir(path string) error {
 		return fmt.Errorf("failed to write spec file: %w", err)
 	}
 
-	err = copy.Copy(c.imageRootFSPath, destRootFSPath)
+	err = copy.Copy(c.ImageRootFSPath, destRootFSPath)
 	if err != nil {
 		return fmt.Errorf("failed to clone rootfs: %w", err)
 	}
@@ -56,20 +61,19 @@ func (c config) buildContainerInDir(path string) error {
 
 func main() {
 
-	defaultImage := config{
-		imageRootFSPath: "/tmp/mycontainer/rootfs",
-		mountsList: []string{
-			"/scratch",
-		},
+	var conf Config
+	err := json.Unmarshal(config_bytes, &conf)
+	if err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
 	}
 
 	dir, err := ioutil.TempDir("", "container-*")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
 
-	err = defaultImage.buildContainerInDir(dir)
+	err = conf.buildContainerInDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,7 +90,6 @@ func main() {
 		log.Fatalf("Failed to get input pipe: %v", err)
 	}
 	defer stdin.Close()
-	
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalf("Failed to get output pipe: %v", err)
