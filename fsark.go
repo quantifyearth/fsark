@@ -24,18 +24,30 @@ type Config struct {
 //go:embed config.json
 var config_bytes []byte
 
-func (c Config) buildContainerInDir(path string) error {
+func (c Config) buildContainerInDir(path string, args []string, cwd string) error {
 
 	destRootFSPath := filepath.Join(path, "rootfs")
 
 	uid := os.Getuid()
 	gid := os.Getgid()
 
+	mounts := make([]BindMount, 1 + len(c.MountsList))
+	mounts[0] = BindMount{
+		Source: cwd,
+		Destination: "/ark",
+	}
+	for index, path := range c.MountsList {
+		mounts[index + 1] = BindMount{
+			Source: path,
+			Destination: path,
+		}
+	}
+
 	spec := CreateRootlessSpec(
-		[]string{c.Command},
-		"/",
+		args,
+		"/ark",
 		destRootFSPath,
-		c.MountsList,
+		mounts,
 		uid,
 		gid,
 	)
@@ -71,17 +83,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
-	err = conf.buildContainerInDir(dir)
+	args := append([]string{conf.Command}, os.Args[1:]...)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = conf.buildContainerInDir(dir, args, cwd)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fullarglist := []string{"/bin/runc", "run", "-b", dir, "mycontainerid"}
+	fullarglist := []string{"/sbin/runc", "run", "-b", dir, "mycontainerid"}
 
 	cmd := &exec.Cmd{
-		Path:   "/bin/runc",
+		Path:   "/sbin/runc",
 		Args:   fullarglist,
 		Stderr: os.Stderr,
 	}
@@ -129,7 +147,7 @@ func main() {
 		wgout.Done()
 	}()
 
-	// Read from stdin, write to child. We don't have a wait group for this, 
+	// Read from stdin, write to child. We don't have a wait group for this,
 	// just currently letting main exit and this will be reaped.
 	go func() {
 		buffer := make([]byte, 1024)
@@ -159,6 +177,11 @@ func main() {
     wgout.Wait()
 	err = cmd.Wait()
 	if err != nil {
-		log.Fatalf("Failed to wait: %v", err)
+		if proc_error, ok := err.(*exec.ExitError); ok {
+			// if the child exited with an error, just pass it on
+			os.Exit(proc_error.ExitCode())
+		} else {
+			log.Fatalf("Failed to wait: %v", err)
+		}
 	}
 }

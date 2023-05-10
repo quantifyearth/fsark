@@ -1,7 +1,7 @@
 {
-    "rootfs": "/tmp/mycontainer",
+    "rootfs": "/tmp/2e393883b19c",
     "mounts": [
-        "/home/michael"
+        "/maps"
     ],
-    "command": "/bin/sh"
+    "command": "littlejohn"
 }

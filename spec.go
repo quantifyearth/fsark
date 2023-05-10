@@ -61,11 +61,16 @@ type Spec struct {
 	Linux      SpecLinux   `json:"linux"`
 }
 
+type BindMount struct {
+	Source string
+	Destination string
+}
+
 func CreateRootlessSpec(
 	args []string,
 	workingDirectory string,
 	rootfs string,
-	additionalMountPaths []string,
+	additionalMountPaths []BindMount,
 	uid int,
 	gid int,
 ) Spec {
@@ -174,12 +179,13 @@ func CreateRootlessSpec(
 		},
 	}
 
-	for _, additionalMountPath := range additionalMountPaths {
+	for _, additionalMount := range additionalMountPaths {
 		additional := SpecMount{
-			Destination: additionalMountPath,
-			TypeVal: "bind",
-			Source: additionalMountPath,
+			Destination: additionalMount.Destination,
+			TypeVal: "none",
+			Source: additionalMount.Source,
 			Options: []string{
+				"bind",
 				"nosuid",
 				"noexec",
 				"nodev",
