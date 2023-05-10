@@ -72,16 +72,23 @@ func (c Config) buildContainerInDir(path string, args []string, cwd string) erro
 }
 
 func main() {
+	// If you os.Exit immediately, defers don't happen :(
+	retcode := 0
+	defer os.Exit(retcode)
 
 	var conf Config
 	err := json.Unmarshal(config_bytes, &conf)
 	if err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
+		retcode = 1
+		log.Printf("Failed to parse config: %v", err)
+		return
 	}
 
 	dir, err := ioutil.TempDir("", "container-*")
 	if err != nil {
-		log.Fatal(err)
+		retcode = 1
+		log.Printf("Failed to create temporary directory: %v", err)
+		return
 	}
 	defer os.RemoveAll(dir)
 
@@ -89,11 +96,15 @@ func main() {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		retcode = 1
+		log.Printf("Failed to get current directory: %v", err)
+		return
 	}
 	err = conf.buildContainerInDir(dir, args, cwd)
 	if err != nil {
-		log.Fatal(err)
+		retcode = 1
+		log.Printf("Failed to create container: %v", err)
+		return
 	}
 
 	fullarglist := []string{"/sbin/runc", "run", "-b", dir, "mycontainerid"}
@@ -105,18 +116,24 @@ func main() {
 	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Fatalf("Failed to get input pipe: %v", err)
+		retcode = 1
+		log.Printf("Failed to get input pipe: %v", err)
+		return
 	}
 	defer stdin.Close()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatalf("Failed to get output pipe: %v", err)
+		retcode = 1
+		log.Printf("Failed to get output pipe: %v", err)
+		return
 	}
 	defer stdout.Close()
 
 	err = cmd.Start()
 	if err != nil {
-		log.Fatalf("Failed to run runc: %v", err)
+		retcode = 1
+		log.Printf("Failed to run runc: %v", err)
+		return
 	}
 
 	// Read from child, echo locally
@@ -179,9 +196,12 @@ func main() {
 	if err != nil {
 		if proc_error, ok := err.(*exec.ExitError); ok {
 			// if the child exited with an error, just pass it on
-			os.Exit(proc_error.ExitCode())
+			retcode = proc_error.ExitCode()
+			return
 		} else {
-			log.Fatalf("Failed to wait: %v", err)
+			retcode = 1
+			log.Printf("Failed to wait: %v", err)
+			return
 		}
 	}
 }

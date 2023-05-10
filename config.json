@@ -1,7 +1,7 @@
 {
-    "rootfs": "/tmp/2e393883b19c",
-    "mounts": [
-        "/maps"
-    ],
-    "command": "littlejohn"
+	"rootfs": "/maps/mwd24/containers/persistence-calculator/2e393883b19c",
+	"mounts": [
+		"/maps"
+	],
+	"command": "python3"
 }
