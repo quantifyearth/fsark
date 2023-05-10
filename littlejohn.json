@@ -1,0 +1,7 @@
+{
+    "rootfs": "/var/ark/containers/gdalplus/2e393883b19c",
+    "mounts": [
+        "/maps"
+    ],
+    "command": "littlejohn"
+}
