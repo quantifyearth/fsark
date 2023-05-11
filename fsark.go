@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/tar"
 	"encoding/json"
 	_ "embed"
 	"fmt"
@@ -11,8 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-
-	"github.com/otiai10/copy"
 )
 
 type Config struct {
@@ -23,6 +22,51 @@ type Config struct {
 
 //go:embed config.json
 var config_bytes []byte
+
+func unpackImage(imgPath string, rootfsPath string) error {
+	file, err := os.Open(imgPath)
+	if err != nil {
+		return fmt.Errorf("failed to open image: %w", err)
+	}
+	defer file.Close()
+
+	tarReader := tar.NewReader(file)
+
+	for {
+		header, err := tarReader.Next()
+		switch {
+		case err == io.EOF:
+			return nil
+		case err != nil:
+			return fmt.Errorf("error reading next header: %w", err)
+		case header == nil:
+			continue
+		}
+
+		targetPath := filepath.Join(rootfsPath, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if _, err := os.Stat(targetPath); err != nil {
+				if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
+					return fmt.Errorf("failed to create dir %v: %w", targetPath, err)
+				}
+			}
+
+		case tar.TypeReg:
+			f, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("failed to create file %v: %w", targetPath, err)
+			}
+			if _, err := io.Copy(f, tarReader); err != nil {
+				return fmt.Errorf("failed to copy data for %v: %w", targetPath, err)
+			}
+			f.Close()
+		}
+	}
+
+	return nil
+}
 
 func (c Config) buildContainerInDir(path string, args []string, cwd string) error {
 
@@ -63,7 +107,11 @@ func (c Config) buildContainerInDir(path string, args []string, cwd string) erro
 		return fmt.Errorf("failed to write spec file: %w", err)
 	}
 
-	err = copy.Copy(c.ImageRootFSPath, destRootFSPath)
+	err = os.MkdirAll(destRootFSPath, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create rootfs directory: %w", err)
+	}
+	err = unpackImage(c.ImageRootFSPath, destRootFSPath)
 	if err != nil {
 		return fmt.Errorf("failed to clone rootfs: %w", err)
 	}

@@ -1,5 +1,5 @@
 {
-    "rootfs": "/var/ark/containers/gdalplus/2e393883b19c",
+    "rootfs": "/var/ark/containers/gdalplus/2e393883b19c.tar",
     "mounts": [
         "/maps"
     ],
