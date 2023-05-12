@@ -62,6 +62,22 @@ func unpackImage(imgPath string, rootfsPath string) error {
 				return fmt.Errorf("failed to copy data for %v: %w", targetPath, err)
 			}
 			f.Close()
+
+		case tar.TypeSymlink:
+			err = os.Symlink(header.Linkname, targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to create symlink %v %v: %w", header.Linkname, targetPath, err)
+			}
+
+		case tar.TypeLink:
+			sourcePath := filepath.Join(rootfsPath, header.Linkname)
+			err = os.Link(sourcePath, targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to create link %v %v: %w", header.Linkname, targetPath, err)
+			}
+
+		default:
+			fmt.Printf("Skipping %v of type %v\n", targetPath, header.Typeflag)
 		}
 	}
 
