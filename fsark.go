@@ -149,6 +149,13 @@ func main() {
 	retcode := 0
 	defer os.Exit(retcode)
 
+	runcPath, err := exec.LookPath("runc")
+	if err != nil {
+		retcode = 1
+		log.Printf("Failed to find runc on path")
+		return
+	}
+
 	configFile, err := os.Open(configPath)
 	if err != nil {
 		retcode = 1
@@ -209,10 +216,10 @@ func main() {
 		return
 	}
 
-	fullarglist := []string{"/sbin/runc", "run", "-b", dir, "mycontainerid"}
+	fullarglist := []string{runcPath, "run", "-b", dir, "mycontainerid"}
 
 	cmd := &exec.Cmd{
-		Path:   "/sbin/runc",
+		Path:   runcPath,
 		Args:   fullarglist,
 		Stderr: os.Stderr,
 	}
