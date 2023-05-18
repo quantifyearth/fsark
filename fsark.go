@@ -14,14 +14,23 @@ import (
 	"sync"
 )
 
-type Config struct {
-	ImageRootFSPath string `json:"rootfs"`
+type Wrapper struct {
+	ImageName string `json:"image"`
 	MountsList []string `json:"mounts"`
 	Command string `json:"command"`
 }
 
-//go:embed config.json
-var config_bytes []byte
+type Image struct {
+	ImageRootFSPath string `json:"rootfs"`
+	Tags []string `json:"tags,omitempty"`
+}
+
+type Config struct {
+	Images map[string]Image `json:"images"`
+	Commands map[string]Wrapper `json:"commands"`
+}
+
+const configPath = "/var/ark/config.json"
 
 func unpackImage(imgPath string, rootfsPath string) error {
 	file, err := os.Open(imgPath)
@@ -84,19 +93,19 @@ func unpackImage(imgPath string, rootfsPath string) error {
 	return nil
 }
 
-func (c Config) buildContainerInDir(path string, args []string, cwd string) error {
+func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string) error {
 
 	destRootFSPath := filepath.Join(path, "rootfs")
 
 	uid := os.Getuid()
 	gid := os.Getgid()
 
-	mounts := make([]BindMount, 1 + len(c.MountsList))
+	mounts := make([]BindMount, 1 + len(mountsList))
 	mounts[0] = BindMount{
 		Source: cwd,
 		Destination: "/ark",
 	}
-	for index, path := range c.MountsList {
+	for index, path := range mountsList {
 		mounts[index + 1] = BindMount{
 			Source: path,
 			Destination: path,
@@ -140,11 +149,40 @@ func main() {
 	retcode := 0
 	defer os.Exit(retcode)
 
+	configFile, err := os.Open(configPath)
+	if err != nil {
+		retcode = 1
+		log.Printf("Failed to open %v: %v", configPath, err)
+		return
+	}
+
 	var conf Config
-	err := json.Unmarshal(config_bytes, &conf)
+	err = json.NewDecoder(configFile).Decode(&conf)
 	if err != nil {
 		retcode = 1
 		log.Printf("Failed to parse config: %v", err)
+		return
+	}
+
+	// Find the matching name
+	_, exeName := filepath.Split(os.Args[0])
+	commandConfig, ok := conf.Commands[exeName]
+	if !ok {
+		retcode = 1
+		log.Printf("Configuration has no match for command %v, only:\n", exeName)
+		for key, _ := range conf.Commands {
+			log.Printf("\t* %v\n", key)
+		}
+		return
+	}
+
+	imageConfig, ok := conf.Images[commandConfig.ImageName]
+	if !ok {
+		retcode = 1
+		log.Printf("Configuration has no match for image %v, only:\n", commandConfig.ImageName)
+		for key, _ := range conf.Images {
+			log.Printf("\t* %v\n", key)
+		}
 		return
 	}
 
@@ -156,7 +194,7 @@ func main() {
 	}
 	defer os.RemoveAll(dir)
 
-	args := append([]string{conf.Command}, os.Args[1:]...)
+	args := append([]string{commandConfig.Command}, os.Args[1:]...)
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -164,7 +202,7 @@ func main() {
 		log.Printf("Failed to get current directory: %v", err)
 		return
 	}
-	err = conf.buildContainerInDir(dir, args, cwd)
+	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList)
 	if err != nil {
 		retcode = 1
 		log.Printf("Failed to create container: %v", err)

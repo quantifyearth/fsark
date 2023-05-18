@@ -1,7 +1,0 @@
-{
-	"rootfs": "/var/ark/containers/gdalplus/2e393883b19c.tar",
-	"mounts": [
-		"/maps"
-	],
-	"command": "python3"
-}
