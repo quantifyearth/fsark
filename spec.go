@@ -69,6 +69,7 @@ type BindMount struct {
 
 func CreateRootlessSpec(
 	args []string,
+	env []string,
 	workingDirectory string,
 	rootfs string,
 	additionalMountPaths []BindMount,
@@ -81,11 +82,16 @@ func CreateRootlessSpec(
 		"CAP_NET_BIND_SERVICE",
 	}
 
+	newenv := []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	}
+	newenv = append(newenv, env...)
+
 	process := SpecProcess{
 		Terminal: true,
 		User:     SpecUser{UID: 0, GID: 0},
 		Args:     args,
-		Env:      []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
+		Env:      newenv,
 		Cwd:      workingDirectory,
 		Capabilities: map[string][]string{
 			"bounding":  caps,
