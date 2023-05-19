@@ -1,8 +1,48 @@
-A hacky start to both:
+A wrapper that lets you run tasks in containers using runc. It will by default run a specific command in a container with the current working directory mounted in it.
 
-* Doing something Ark like
-* Avoiding the broken state of GDAL's pip brokenness
+## Setup
 
-If you run the Makefile you'll get two programs: arklittlejohn and arkpython3, which will look for a container image in a currently hardwired location, and run littlejohn or python3 in there, which means the persistence-calculator/H3Calculator should run without you needing to build a virtualenv, which is currently problematic.
+### 1: Get your container image
 
-Lots broken, but this is an MVP just to get the persistence pipeline back to a sane state, I'll tidy/fix things later.
+As per runc, you need to create your container images using docker:
+
+```
+$ docker create python:buster
+$ docker export [ID FROM ABOVE] > container.tar
+```
+
+### 2: Configuration file
+
+You then need a config file that maps container images to commands, for example:
+
+```
+{
+	"images": {
+		"pythonbuster": {
+			"rootfs": "/path/to/container.tar",
+			"tags": ["python3", "python", "buster"]
+		}
+	},
+	"commands": {
+		"mypython3": {
+			"image": "pythonbuster",
+			"mounts": [
+				"/scratch"
+			],
+			"command": "python3"
+		}
+	}
+}
+```
+
+This is currently looked for in `/var/ark/config.json`.
+
+### Install with symlinks
+
+The go build process will create `fsark` as a binary. You then symlink to this with the name of the command you want it to use from the config file when run:
+
+```
+$ go build
+$ sudo cp fsark /usr/local/bin
+$ sudo ln -s /usr/local/bin/fsark /usr/local/bin/mypython3
+```
