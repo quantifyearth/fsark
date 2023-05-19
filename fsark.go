@@ -2,8 +2,8 @@ package main
 
 import (
 	"archive/tar"
-	"encoding/json"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,18 +15,18 @@ import (
 )
 
 type Wrapper struct {
-	ImageName string `json:"image"`
+	ImageName  string   `json:"image"`
 	MountsList []string `json:"mounts"`
-	Command string `json:"command"`
+	Command    string   `json:"command"`
 }
 
 type Image struct {
-	ImageRootFSPath string `json:"rootfs"`
-	Tags []string `json:"tags,omitempty"`
+	ImageRootFSPath string   `json:"rootfs"`
+	Tags            []string `json:"tags,omitempty"`
 }
 
 type Config struct {
-	Images map[string]Image `json:"images"`
+	Images   map[string]Image   `json:"images"`
 	Commands map[string]Wrapper `json:"commands"`
 }
 
@@ -100,14 +100,14 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 	uid := os.Getuid()
 	gid := os.Getgid()
 
-	mounts := make([]BindMount, 1 + len(mountsList))
+	mounts := make([]BindMount, 1+len(mountsList))
 	mounts[0] = BindMount{
-		Source: cwd,
+		Source:      cwd,
 		Destination: "/ark",
 	}
 	for index, path := range mountsList {
-		mounts[index + 1] = BindMount{
-			Source: path,
+		mounts[index+1] = BindMount{
+			Source:      path,
 			Destination: path,
 		}
 	}
@@ -246,7 +246,7 @@ func main() {
 	}
 
 	// Read from child, echo locally
-    var wgout sync.WaitGroup
+	var wgout sync.WaitGroup
 	wgout.Add(1)
 	go func() {
 		buffer := make([]byte, 1024)
@@ -300,7 +300,7 @@ func main() {
 	}()
 
 	// wait for things to stop
-    wgout.Wait()
+	wgout.Wait()
 	err = cmd.Wait()
 	if err != nil {
 		if proc_error, ok := err.(*exec.ExitError); ok {

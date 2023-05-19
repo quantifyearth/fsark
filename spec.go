@@ -5,10 +5,11 @@ type SpecUser struct {
 	GID uint `json:"gid"`
 }
 
+// On linux rlim_t is unsigned long
 type SpecLimit struct {
 	TypeVal string `json:"type"`
-	Hard    int    `json:"hard"`
-	Soft    int    `json:"soft"`
+	Hard     uint32    `json:"hard"`
+	Soft     uint32    `json:"soft"`
 }
 
 type SpecProcess struct {
@@ -23,7 +24,7 @@ type SpecProcess struct {
 }
 
 type SpecRoot struct {
-	Path     string `json;"path"`
+	Path     string `json:"path"`
 	Readonly bool   `json:"readonly"`
 }
 
@@ -92,13 +93,7 @@ func CreateRootlessSpec(
 			"permitted": caps,
 			"ambient":   caps,
 		},
-		Rlimits: []SpecLimit{
-			SpecLimit{
-				TypeVal: "RLIMIT_NOFILE",
-				Hard:    1024,
-				Soft:    1024,
-			},
-		},
+		Rlimits: []SpecLimit{},
 		NoNewPrivileges: true,
 	}
 
