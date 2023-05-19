@@ -8,8 +8,8 @@ type SpecUser struct {
 // On linux rlim_t is unsigned long
 type SpecLimit struct {
 	TypeVal string `json:"type"`
-	Hard     uint32    `json:"hard"`
-	Soft     uint32    `json:"soft"`
+	Hard    uint32 `json:"hard"`
+	Soft    uint32 `json:"soft"`
 }
 
 type SpecProcess struct {
@@ -63,7 +63,7 @@ type Spec struct {
 }
 
 type BindMount struct {
-	Source string
+	Source      string
 	Destination string
 }
 
@@ -93,7 +93,7 @@ func CreateRootlessSpec(
 			"permitted": caps,
 			"ambient":   caps,
 		},
-		Rlimits: []SpecLimit{},
+		Rlimits:         []SpecLimit{},
 		NoNewPrivileges: true,
 	}
 
@@ -177,8 +177,8 @@ func CreateRootlessSpec(
 	for _, additionalMount := range additionalMountPaths {
 		additional := SpecMount{
 			Destination: additionalMount.Destination,
-			TypeVal: "none",
-			Source: additionalMount.Source,
+			TypeVal:     "none",
+			Source:      additionalMount.Source,
 			Options: []string{
 				"bind",
 				"nosuid",
