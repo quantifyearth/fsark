@@ -216,7 +216,8 @@ func main() {
 		return
 	}
 
-	fullarglist := []string{runcPath, "run", "-b", dir, "mycontainerid"}
+	_, id := filepath.Split(dir)
+	fullarglist := []string{runcPath, "run", "-b", dir, id}
 
 	cmd := &exec.Cmd{
 		Path:   runcPath,
