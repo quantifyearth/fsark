@@ -152,7 +152,9 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 func main() {
 	// If you os.Exit immediately, defers don't happen :(
 	retcode := 0
-	defer os.Exit(retcode)
+	defer func(code *int){
+		os.Exit(*code)
+	}(&retcode)
 
 	runcPath, err := exec.LookPath("runc")
 	if err != nil {
