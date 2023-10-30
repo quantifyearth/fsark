@@ -167,6 +167,16 @@ func CreateRootlessSpec(
 			},
 		},
 		SpecMount{
+			Destination: "/tmp",
+			TypeVal:     "tmpfs",
+			Source:      "tmpfs",
+			Options: []string{
+				"nosuid",
+				"noexec",
+				"nodev",
+			},
+		},
+		SpecMount{
 			Destination: "/sys/fs/cgroup",
 			TypeVal:     "cgroup",
 			Source:      "cgroup",
