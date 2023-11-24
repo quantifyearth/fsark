@@ -13,9 +13,10 @@ import (
 )
 
 type Wrapper struct {
-	ImageName  string   `json:"image"`
-	MountsList []string `json:"mounts"`
-	Command    string   `json:"command"`
+	ImageName   string   `json:"image"`
+	MountsList  []string `json:"mounts"`
+	Command     string   `json:"command"`
+	CommandArgs []string `json:"command_start"`
 }
 
 type Image struct {
@@ -204,7 +205,12 @@ func main() {
 	}
 	defer os.RemoveAll(dir)
 
-	args := append([]string{commandConfig.Command}, os.Args[1:]...)
+	var args []string
+	if len(commandConfig.CommandArgs) > 1 {
+		args = append(commandConfig.CommandArgs, os.Args[1:]...)
+	} else {
+		args = append([]string{commandConfig.Command}, os.Args[1:]...)
+	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
