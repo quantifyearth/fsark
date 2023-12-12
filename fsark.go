@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/tar"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,65 +29,6 @@ type Config struct {
 }
 
 const configPath = "/var/ark/config.json"
-
-func unpackImage(imgPath string, rootfsPath string) error {
-	file, err := os.Open(imgPath)
-	if err != nil {
-		return fmt.Errorf("failed to open image: %w", err)
-	}
-	defer file.Close()
-
-	tarReader := tar.NewReader(file)
-
-	for {
-		header, err := tarReader.Next()
-		switch {
-		case err == io.EOF:
-			return nil
-		case err != nil:
-			return fmt.Errorf("error reading next header: %w", err)
-		case header == nil:
-			continue
-		}
-
-		targetPath := filepath.Join(rootfsPath, header.Name)
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if _, err := os.Stat(targetPath); err != nil {
-				if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
-					return fmt.Errorf("failed to create dir %v: %w", targetPath, err)
-				}
-			}
-
-		case tar.TypeReg:
-			f, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return fmt.Errorf("failed to create file %v: %w", targetPath, err)
-			}
-			if _, err := io.Copy(f, tarReader); err != nil {
-				return fmt.Errorf("failed to copy data for %v: %w", targetPath, err)
-			}
-			f.Close()
-
-		case tar.TypeSymlink:
-			err = os.Symlink(header.Linkname, targetPath)
-			if err != nil {
-				return fmt.Errorf("failed to create symlink %v %v: %w", header.Linkname, targetPath, err)
-			}
-
-		case tar.TypeLink:
-			sourcePath := filepath.Join(rootfsPath, header.Linkname)
-			err = os.Link(sourcePath, targetPath)
-			if err != nil {
-				return fmt.Errorf("failed to create link %v %v: %w", header.Linkname, targetPath, err)
-			}
-
-		default:
-			fmt.Printf("Skipping %v of type %v\n", targetPath, header.Typeflag)
-		}
-	}
-}
 
 func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string) error {
 
@@ -138,7 +78,7 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 	if err != nil {
 		return fmt.Errorf("failed to create rootfs directory: %w", err)
 	}
-	err = unpackImage(c.ImageRootFSPath, destRootFSPath)
+	err = unpackRootFS(c.ImageRootFSPath, destRootFSPath)
 	if err != nil {
 		return fmt.Errorf("failed to clone rootfs: %w", err)
 	}

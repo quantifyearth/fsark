@@ -2,14 +2,21 @@ A wrapper that lets you run tasks in containers using runc. It will by default r
 
 ## Setup
 
-### 1: Get your container image
+### 1: Get your image, this can be either a docker image directly, or a container image.
 
 As per runc, you need to create your container images using docker:
 
 ```
 $ docker create python:buster
-$ docker export [ID FROM ABOVE] > container.tar
+$ docker export [ID FROM ABOVE] > python-buster.tar
 ```
+
+Of you can take the image directly:
+
+```
+$ docker save python:buster > python-buster.tar
+```
+
 
 ### 2: Configuration file
 
@@ -19,7 +26,7 @@ You then need a config file that maps container images to commands, for example:
 {
 	"images": {
 		"pythonbuster": {
-			"rootfs": "/path/to/container.tar",
+			"rootfs": "/path/to/python-buster.tar",
 			"tags": ["python3", "python", "buster"]
 		}
 	},
