@@ -12,14 +12,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
-type imageCacheRecord struct {
-	HexDigest string `json:"digest"`
-	Name      string `json:"name"`
-	Path      string `json:"path"`
-}
-
-const CACHE_PATH = "/tmp"
-
 func getImagePathForName(imageName string) (string, error) {
 	_, err := os.Stat(imageName)
 	if err == nil {
@@ -27,6 +19,15 @@ func getImagePathForName(imageName string) (string, error) {
 	}
 	if !os.IsNotExist(err) {
 		return "", fmt.Errorf("problem accessing image %s: %w", imageName, err)
+	}
+
+	containerCachePath, ok := os.LookupEnv("SHARK_CONTAINER_CACHE")
+	if !ok {
+		containerCachePath = path.Join(os.Getenv("HOME"), ".shark")
+	}
+	err = os.MkdirAll(containerCachePath, os.ModePerm)
+	if err != nil {
+		return "", fmt.Errorf("could not find container cache %v: %w", containerCachePath, err)
 	}
 
 	ref, err := name.ParseReference(imageName, name.Insecure)
@@ -47,7 +48,7 @@ func getImagePathForName(imageName string) (string, error) {
 	imageMap := map[string]v1.Image{}
 	imageMap[imageName] = img
 
-	path := path.Join(CACHE_PATH, fmt.Sprintf("%s.tar", hash.Hex))
+	path := path.Join(containerCachePath, fmt.Sprintf("%s.tar", hash.Hex))
 
 	_, err = os.Stat(path)
 	if err == nil {
