@@ -43,12 +43,20 @@ func getImagePathForName(imageName string) (string, error) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%s\n", hash.Hex)
 
 	imageMap := map[string]v1.Image{}
 	imageMap[imageName] = img
 
 	path := path.Join(CACHE_PATH, fmt.Sprintf("%s.tar", hash.Hex))
+
+	_, err = os.Stat(path)
+	if err == nil {
+		return path, nil
+	}
+	if !os.IsNotExist(err) {
+		return "", err
+	}
+
 	err = crane.MultiSave(imageMap, path)
 	if err != nil {
 		panic(fmt.Errorf("saving tarball %s: %w", path, err))
