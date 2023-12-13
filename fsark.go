@@ -32,6 +32,11 @@ const configPath = "/var/ark/config.json"
 
 func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string) error {
 
+	rootImage, err := getImagePathForName(c.ImageRootFSPath)
+	if err != nil {
+		return err
+	}
+
 	destRootFSPath := filepath.Join(path, "rootfs")
 
 	uid := os.Getuid()
@@ -78,7 +83,7 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 	if err != nil {
 		return fmt.Errorf("failed to create rootfs directory: %w", err)
 	}
-	err = unpackRootFS(c.ImageRootFSPath, destRootFSPath)
+	err = unpackRootFS(rootImage, destRootFSPath)
 	if err != nil {
 		return fmt.Errorf("failed to clone rootfs: %w", err)
 	}
