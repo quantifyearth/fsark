@@ -18,6 +18,24 @@ type imageManifestItem struct {
 	Layers   []string `json:"Layers"`
 }
 
+func (imi imageManifestItem) Digest() string {
+	// The config file in an image contains the hash, but in some cases it
+	// has a .json extension, and in some cases it has a "hashtype:" prefix, so
+	// we need to strip those out.
+	basename := path.Base(imi.Config)
+	extension := path.Ext(basename)
+	body := strings.TrimSuffix(basename, extension)
+	parts := strings.Split(body, ":")
+	switch len(parts) {
+	case 1:
+		return body
+	case 2:
+		return parts[1]
+	default:
+		return imi.Config
+	}
+}
+
 func unpackRootFS(tarballPath string, rootfsPath string) error {
 
 	imageManifest, err := loadImageManifest(tarballPath)
