@@ -12,10 +12,11 @@ import (
 )
 
 type Wrapper struct {
-	ImageName   string   `json:"image"`
-	MountsList  []string `json:"mounts"`
-	Command     string   `json:"command"`
-	CommandArgs []string `json:"command_start"`
+	ImageName   string            `json:"image"`
+	MountsList  []string          `json:"mounts"`
+	Environment map[string]string `json:"environment"`
+	Command     string            `json:"command"`
+	CommandArgs []string          `json:"command_start"`
 }
 
 type Image struct {
@@ -30,7 +31,7 @@ type Config struct {
 
 const configPath = "/var/ark/config.json"
 
-func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string) error {
+func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string, environment map[string]string) error {
 
 	rootImage, err := getImagePathForName(c.ImageRootFSPath)
 	if err != nil {
@@ -56,6 +57,10 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 
 	env := []string{
 		fmt.Sprintf("USER=%s", os.Getenv("USER")),
+		fmt.Sprintf("FSARK=%s", os.Args[0]),
+	}
+	for key, value := range environment {
+		env = append(env, fmt.Sprintf("%s=%s", key, value))
 	}
 
 	spec := CreateRootlessSpec(
@@ -163,7 +168,7 @@ func main() {
 		log.Printf("Failed to get current directory: %v", err)
 		return
 	}
-	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList)
+	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList, commandConfig.Environment)
 	if err != nil {
 		retcode = 1
 		log.Printf("Failed to create container: %v", err)
