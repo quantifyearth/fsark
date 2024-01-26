@@ -17,6 +17,7 @@ type Wrapper struct {
 	Environment map[string]string `json:"environment"`
 	Command     string            `json:"command"`
 	CommandArgs []string          `json:"command_start"`
+	Networking  string            `json:"networking"`
 }
 
 type Image struct {
@@ -31,7 +32,14 @@ type Config struct {
 
 const configPath = "/var/ark/config.json"
 
-func (c Image) buildContainerInDir(path string, args []string, cwd string, mountsList []string, environment map[string]string) error {
+func (c Image) buildContainerInDir(
+	path string,
+	args []string,
+	cwd string,
+	mountsList []string,
+	environment map[string]string,
+	networking string,
+) error {
 
 	rootImage, err := getImagePathForName(c.ImageRootFSPath)
 	if err != nil {
@@ -71,6 +79,7 @@ func (c Image) buildContainerInDir(path string, args []string, cwd string, mount
 		mounts,
 		uid,
 		gid,
+		networking == "host",
 	)
 
 	configPath := filepath.Join(path, "config.json")
@@ -168,7 +177,7 @@ func main() {
 		log.Printf("Failed to get current directory: %v", err)
 		return
 	}
-	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList, commandConfig.Environment)
+	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList, commandConfig.Environment, commandConfig.Networking)
 	if err != nil {
 		retcode = 1
 		log.Printf("Failed to create container: %v", err)

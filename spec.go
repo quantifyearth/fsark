@@ -75,11 +75,11 @@ func CreateRootlessSpec(
 	additionalMountPaths []BindMount,
 	uid int,
 	gid int,
+	hostNetworking bool,
 ) Spec {
 	caps := []string{
 		"CAP_AUDIT_WRITE",
 		"CAP_KILL",
-		"CAP_NET_BIND_SERVICE",
 	}
 
 	newenv := []string{
@@ -188,6 +188,21 @@ func CreateRootlessSpec(
 				"ro",
 			},
 		},
+	}
+
+	if hostNetworking {
+		mounts = append(mounts, SpecMount{
+			Destination: "/etc/resolv.conf",
+			TypeVal:     "none",
+			Source:      "/etc/resolv.conf",
+			Options: []string{
+				"bind",
+				"nosuid",
+				"noexec",
+				"nodev",
+				"ro",
+			},
+		})
 	}
 
 	for _, additionalMount := range additionalMountPaths {
