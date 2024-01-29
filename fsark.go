@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"strings"
 	"sync"
 )
 
@@ -69,6 +71,14 @@ func (c Image) buildContainerInDir(
 	}
 	for key, value := range environment {
 		env = append(env, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		env = append(env, fmt.Sprintf("FSARK_PATH=%s", info.Main.Path))
+		env = append(env, fmt.Sprintf("FSARK_VERSION=%s", info.Main.Version))
+		for _, setting := range info.Settings {
+			env = append(env, fmt.Sprintf("FSARK_%s=%s", strings.ReplaceAll(strings.ToUpper(setting.Key), ".", "_"), setting.Value))
+		}
 	}
 
 	spec := CreateRootlessSpec(
@@ -177,7 +187,14 @@ func main() {
 		log.Printf("Failed to get current directory: %v", err)
 		return
 	}
-	err = imageConfig.buildContainerInDir(dir, args, cwd, commandConfig.MountsList, commandConfig.Environment, commandConfig.Networking)
+	err = imageConfig.buildContainerInDir(
+		dir,
+		args,
+		cwd,
+		commandConfig.MountsList,
+		commandConfig.Environment,
+		commandConfig.Networking,
+	)
 	if err != nil {
 		retcode = 1
 		log.Printf("Failed to create container: %v", err)
