@@ -37,6 +37,18 @@ You then need a config file that maps container images to commands, for example:
 				"/scratch"
 			],
 			"command": "python3"
+		},
+		"mysh": {
+			"image": "pythonbuster",
+			"mounts": [
+				"/scratch"
+			],
+			"environment": {
+				"HOST_KEY": "1234ABCD",
+				"LOG_PATH": "/scratch/logs"
+			},
+			"networking": "host",
+			"command": "bash"
 		}
 	}
 }
