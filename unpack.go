@@ -179,6 +179,12 @@ func expandTar(tarReader *tar.Reader, rootfsPath string, overlay bool) error {
 			}
 
 		case tar.TypeLink:
+			if overlay {
+				err = os.Remove(targetPath)
+				if (err != nil) && !os.IsNotExist(err) {
+					return fmt.Errorf("failed to remove file for symlink %v: %w", targetPath, err)
+				}
+			}
 			sourcePath := filepath.Join(rootfsPath, header.Linkname)
 			err = os.Link(sourcePath, targetPath)
 			if err != nil {
