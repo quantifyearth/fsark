@@ -10,12 +10,32 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type imageManifestItem struct {
 	Config   string   `json:"Config"`
 	RepoTags []string `json:"RepoTags"`
 	Layers   []string `json:"Layers"`
+}
+
+type configurationData struct {
+	Hostname         string            `json:"Hostname"`
+	DomainName       string            `json:"Domainname"`
+	User             string            `json:"User"`
+	Environment      []string          `json:"Env"`
+	Command          []string          `json:"Cmd"`
+	WorkingDirectory string            `json:"WorkingDir"`
+	Labels           map[string]string `json:"Labels"`
+}
+
+type configurationTopLevel struct {
+	Architecture           string            `json:"architecture"`
+	Configuration          configurationData `json:"config"`
+	Container              string            `json:"container"`
+	ContainerConfiguration configurationData `json:"container_config"`
+	Created                time.Time         `json:"created"`
+	DockerVersion          string            `json:"docker_version"`
 }
 
 func (imi imageManifestItem) Digest() string {
@@ -36,8 +56,37 @@ func (imi imageManifestItem) Digest() string {
 	}
 }
 
-func unpackRootFS(tarballPath string, rootfsPath string) error {
+func loadFileFromContainer(tarballPath string, filepath string, data interface{}) error {
+	file, err := os.Open(tarballPath)
+	if err != nil {
+		return fmt.Errorf("failed to open image for config: %w", err)
+	}
+	defer file.Close()
 
+	tarReader := tar.NewReader(file)
+	for {
+		header, err := tarReader.Next()
+		switch {
+		case err == io.EOF:
+			return err
+		case err != nil:
+			return fmt.Errorf("error reading next header: %w", err)
+		case header == nil:
+			continue
+		}
+
+		if header.Name != filepath {
+			continue
+		}
+		if header.Typeflag != tar.TypeReg {
+			return fmt.Errorf("expected manifest to be a regular file, but is %v", header.Typeflag)
+		}
+
+		return json.NewDecoder(tarReader).Decode(&data)
+	}
+}
+
+func unpackRootFS(tarballPath string, rootfsPath string) error {
 	imageManifest, err := loadImageManifest(tarballPath)
 	if err != nil {
 		if err != io.EOF {
@@ -52,42 +101,28 @@ func unpackRootFS(tarballPath string, rootfsPath string) error {
 	return unpackImage(tarballPath, rootfsPath, imageManifest.Layers)
 }
 
-func loadImageManifest(tarballPath string) (imageManifestItem, error) {
-	file, err := os.Open(tarballPath)
+func getContainerConfiguration(tarballPath string) (configurationTopLevel, error) {
+	imageManifest, err := loadImageManifest(tarballPath)
 	if err != nil {
-		return imageManifestItem{}, fmt.Errorf("failed to open image: %w", err)
+		return configurationTopLevel{}, err
 	}
-	defer file.Close()
 
-	tarReader := tar.NewReader(file)
-	for {
-		header, err := tarReader.Next()
-		switch {
-		case err == io.EOF:
-			return imageManifestItem{}, err
-		case err != nil:
-			return imageManifestItem{}, fmt.Errorf("error reading next header: %w", err)
-		case header == nil:
-			continue
-		}
+	// after unpacking, try get the configuration for the image
+	var config configurationTopLevel
+	err = loadFileFromContainer(tarballPath, imageManifest.Config, &config)
+	return config, err
+}
 
-		if header.Name != "manifest.json" {
-			continue
-		}
-		if header.Typeflag != tar.TypeReg {
-			return imageManifestItem{}, fmt.Errorf("expected manifest to be a regular file, but is %v", header.Typeflag)
-		}
-
-		var manifest []imageManifestItem
-		err = json.NewDecoder(tarReader).Decode(&manifest)
-		if err != nil {
-			return imageManifestItem{}, err
-		}
-		if len(manifest) != 1 {
-			return imageManifestItem{}, fmt.Errorf("expected one item in manifest, got %d", len(manifest))
-		}
-		return manifest[0], nil
+func loadImageManifest(tarballPath string) (imageManifestItem, error) {
+	var manifest []imageManifestItem
+	err := loadFileFromContainer(tarballPath, "manifest.json", &manifest)
+	if err != nil {
+		return imageManifestItem{}, err
 	}
+	if len(manifest) != 1 {
+		return imageManifestItem{}, fmt.Errorf("expected one item in manifest, got %d", len(manifest))
+	}
+	return manifest[0], nil
 }
 
 func expandTar(tarReader *tar.Reader, rootfsPath string, overlay bool) error {

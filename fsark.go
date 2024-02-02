@@ -81,6 +81,15 @@ func (c Image) buildContainerInDir(
 		}
 	}
 
+	// if we can, try read the config from the container image and add OCI labels to env
+	config, err := getContainerConfiguration(rootImage)
+	if (err != nil) && (err != io.EOF) {
+		return err
+	}
+	for key, value := range config.Configuration.Labels {
+		env = append(env, fmt.Sprintf("%s=%s", strings.ReplaceAll(strings.ToUpper(key), ".", "_"), value))
+	}
+
 	spec := CreateRootlessSpec(
 		args,
 		env,
