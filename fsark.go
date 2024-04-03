@@ -11,12 +11,15 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+
+	"github.com/joho/godotenv"
 )
 
 type Wrapper struct {
 	ImageName   string            `json:"image"`
 	MountsList  []string          `json:"mounts"`
 	Environment map[string]string `json:"environment"`
+	AllowDotEnv bool              `json:"allow_dot_env"`
 	Command     string            `json:"command"`
 	CommandArgs []string          `json:"command_start"`
 	Networking  string            `json:"networking"`
@@ -190,6 +193,19 @@ func main() {
 		args = append([]string{commandConfig.Command}, os.Args[1:]...)
 	}
 
+	env := commandConfig.Environment
+	if commandConfig.AllowDotEnv {
+		dotenv, err := godotenv.Read(filepath.Join(os.Getenv("HOME"), ".env"))
+		if err == nil {
+			for key, value := range dotenv {
+				// only add, don't replace
+				if _, ok := env[key]; !ok {
+					env[key] = value
+				}
+			}
+		}
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		retcode = 1
@@ -201,7 +217,7 @@ func main() {
 		args,
 		cwd,
 		commandConfig.MountsList,
-		commandConfig.Environment,
+		env,
 		commandConfig.Networking,
 	)
 	if err != nil {
